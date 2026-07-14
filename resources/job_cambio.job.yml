@@ -2,72 +2,165 @@ resources:
   jobs:
     job_cambio:
       name: job_cambio
+
       tasks:
         - task_key: landing
           disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
           email_notifications: {}
+
           notebook_task:
             notebook_path: ../src/job_cambio/01_landing.ipynb
             source: WORKSPACE
+
           run_if: ALL_SUCCESS
-          timeout_seconds: 0
           webhook_notifications: {}
+
         - task_key: bronze
           depends_on:
             - task_key: landing
+
           disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
           email_notifications: {}
+
           notebook_task:
             base_parameters:
               run_id: "{{job.run_id}}"
+              job_id: "{{job.id}}"
               job_name: "{{job.name}}"
               task_name: "{{task.name}}"
+
             notebook_path: ../src/job_cambio/02_bronze.ipynb
             source: WORKSPACE
+
           run_if: ALL_SUCCESS
-          timeout_seconds: 0
           webhook_notifications: {}
+
         - task_key: silver
           depends_on:
             - task_key: bronze
+
           disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
           email_notifications: {}
+
           notebook_task:
             notebook_path: ../src/job_cambio/02_silver_normalizacao_cambio.ipynb
             source: WORKSPACE
+
           run_if: ALL_SUCCESS
-          timeout_seconds: 0
           webhook_notifications: {}
-        - task_key: gold
+
+        - task_key: quality_checks
           depends_on:
             - task_key: silver
+
           disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
           email_notifications: {}
+
+          notebook_task:
+            notebook_path: ../src/job_cambio/03_quality_checks.ipynb
+            source: WORKSPACE
+
+          run_if: ALL_SUCCESS
+          webhook_notifications: {}
+
+        - task_key: gold
+          depends_on:
+            - task_key: quality_checks
+
+          disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
+          email_notifications: {}
+
           notebook_task:
             notebook_path: ../src/job_cambio/gold.ipynb
             source: WORKSPACE
+
           run_if: ALL_SUCCESS
-          timeout_seconds: 0
           webhook_notifications: {}
+
         - task_key: gold_indicador
           depends_on:
-            - task_key: silver
+            - task_key: gold
+
           disabled: false
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
+
           email_notifications: {}
+
           notebook_task:
             notebook_path: ../src/job_cambio/gold_indicador.ipynb
             source: WORKSPACE
+
           run_if: ALL_SUCCESS
-          timeout_seconds: 0
+          webhook_notifications: {}
+
+      # Notificações gerais do job
       email_notifications:
-        no_alert_for_skipped_runs: false
+        on_failure:
+          - lucas.paaz5@gmail.com
+
+        on_duration_warning_threshold_exceeded:
+          - lucas.paaz5@gmail.com
+
+      notification_settings:
+        no_alert_for_skipped_runs: true
+        no_alert_for_canceled_runs: true
+
+      # Considera o job lento após 5 minutos
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: 300
+
+      # Somente uma execução ativa por vez
       max_concurrent_runs: 1
+
       performance_target: PERFORMANCE_OPTIMIZED
+
+      # Caso uma execução já esteja ativa, a próxima aguarda
       queue:
         enabled: true
+
       schedule:
         pause_status: UNPAUSED
         quartz_cron_expression: 0 0 5,12,17 * * ?
         timezone_id: America/Sao_Paulo
-      timeout_seconds: 0
+
+      # Timeout máximo do job inteiro: 30 minutos
+      timeout_seconds: 1800
+
       webhook_notifications: {}

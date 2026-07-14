@@ -1,0 +1,61 @@
+name: Databricks CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-prod-deployment
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+  DATABRICKS_AUTH_TYPE: pat
+
+jobs:
+  validate:
+    name: CI - Validar Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Exibir versão da CLI
+        run: databricks --version
+
+      - name: Validar configuração do Bundle
+        run: databricks bundle validate -t prod
+
+  deploy:
+    name: CD - Deploy em Produção
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    needs:
+      - validate
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Deploy do Bundle
+        run: databricks bundle deploy -t prod
