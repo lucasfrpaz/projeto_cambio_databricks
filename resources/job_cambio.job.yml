@@ -1,0 +1,73 @@
+resources:
+  jobs:
+    job_cambio:
+      name: job_cambio
+      tasks:
+        - task_key: landing
+          disabled: false
+          email_notifications: {}
+          notebook_task:
+            notebook_path: ../src/job_cambio/01_landing.ipynb
+            source: WORKSPACE
+          run_if: ALL_SUCCESS
+          timeout_seconds: 0
+          webhook_notifications: {}
+        - task_key: bronze
+          depends_on:
+            - task_key: landing
+          disabled: false
+          email_notifications: {}
+          notebook_task:
+            base_parameters:
+              run_id: "{{job.run_id}}"
+              job_name: "{{job.name}}"
+              task_name: "{{task.name}}"
+            notebook_path: ../src/job_cambio/02_bronze.ipynb
+            source: WORKSPACE
+          run_if: ALL_SUCCESS
+          timeout_seconds: 0
+          webhook_notifications: {}
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          disabled: false
+          email_notifications: {}
+          notebook_task:
+            notebook_path: ../src/job_cambio/02_silver_normalizacao_cambio.ipynb
+            source: WORKSPACE
+          run_if: ALL_SUCCESS
+          timeout_seconds: 0
+          webhook_notifications: {}
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          disabled: false
+          email_notifications: {}
+          notebook_task:
+            notebook_path: ../src/job_cambio/gold.ipynb
+            source: WORKSPACE
+          run_if: ALL_SUCCESS
+          timeout_seconds: 0
+          webhook_notifications: {}
+        - task_key: gold_indicador
+          depends_on:
+            - task_key: silver
+          disabled: false
+          email_notifications: {}
+          notebook_task:
+            notebook_path: ../src/job_cambio/gold_indicador.ipynb
+            source: WORKSPACE
+          run_if: ALL_SUCCESS
+          timeout_seconds: 0
+      email_notifications:
+        no_alert_for_skipped_runs: false
+      max_concurrent_runs: 1
+      performance_target: PERFORMANCE_OPTIMIZED
+      queue:
+        enabled: true
+      schedule:
+        pause_status: UNPAUSED
+        quartz_cron_expression: 0 0 5,12,17 * * ?
+        timezone_id: America/Sao_Paulo
+      timeout_seconds: 0
+      webhook_notifications: {}
