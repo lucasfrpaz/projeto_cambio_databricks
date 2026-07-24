@@ -3,7 +3,7 @@
 Pipeline de dados desenvolvido para realizar a ingestão, transformação,
 validação e disponibilização das cotações PTAX fornecidas pelo Banco
 Central do Brasil.
-
+  
 O projeto utiliza Azure Databricks, PySpark, Delta Lake e uma arquitetura
 em camadas. A execução é orquestrada pelo Lakeflow Jobs, enquanto os
 recursos do Databricks são definidos por Declarative Automation Bundles,
