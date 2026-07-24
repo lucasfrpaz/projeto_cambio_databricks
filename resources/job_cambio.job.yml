@@ -3,131 +3,108 @@ resources:
     job_cambio:
       name: job_cambio
 
+      description: >
+        Pipeline de ingestão e processamento das cotações PTAX,
+        utilizando arquitetura Landing, Bronze, Silver e Gold.
+
       tasks:
         - task_key: landing
-          disabled: false
-
-          max_retries: 2
-          min_retry_interval_millis: 300000
-          retry_on_timeout: true
-          timeout_seconds: 300
-
-          email_notifications: {}
 
           notebook_task:
             notebook_path: ../src/job_cambio/01_landing.ipynb
             source: WORKSPACE
 
-          run_if: ALL_SUCCESS
-          webhook_notifications: {}
-
-        - task_key: bronze
-          depends_on:
-            - task_key: landing
-
-          disabled: false
-
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
           timeout_seconds: 300
 
-          email_notifications: {}
+        - task_key: bronze
+
+          depends_on:
+            - task_key: landing
 
           notebook_task:
+            notebook_path: ../src/job_cambio/02_bronze.ipynb
+            source: WORKSPACE
+
             base_parameters:
               run_id: "{{job.run_id}}"
               job_id: "{{job.id}}"
               job_name: "{{job.name}}"
               task_name: "{{task.name}}"
 
-            notebook_path: ../src/job_cambio/02_bronze.ipynb
-            source: WORKSPACE
-
           run_if: ALL_SUCCESS
-          webhook_notifications: {}
+
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+          timeout_seconds: 300
 
         - task_key: silver
+
           depends_on:
             - task_key: bronze
 
-          disabled: false
+          notebook_task:
+            notebook_path: ../src/job_cambio/03_silver.ipynb
+            source: WORKSPACE
+
+          run_if: ALL_SUCCESS
 
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
           timeout_seconds: 300
 
-          email_notifications: {}
-
-          notebook_task:
-            notebook_path: ../src/job_cambio/02_silver_normalizacao_cambio.ipynb
-            source: WORKSPACE
-
-          run_if: ALL_SUCCESS
-          webhook_notifications: {}
-
         - task_key: quality_checks
+
           depends_on:
             - task_key: silver
 
-          disabled: false
+          notebook_task:
+            notebook_path: ../src/job_cambio/04_quality_checks.ipynb
+            source: WORKSPACE
+
+          run_if: ALL_SUCCESS
 
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
           timeout_seconds: 300
 
-          email_notifications: {}
+        - task_key: gold_cotacao_diaria
 
-          notebook_task:
-            notebook_path: ../src/job_cambio/03_quality_checks.ipynb
-            source: WORKSPACE
-
-          run_if: ALL_SUCCESS
-          webhook_notifications: {}
-
-        - task_key: gold
           depends_on:
             - task_key: quality_checks
 
-          disabled: false
+          notebook_task:
+            notebook_path: ../src/job_cambio/05_gold_cotacao_diaria.ipynb
+            source: WORKSPACE
+
+          run_if: ALL_SUCCESS
 
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
           timeout_seconds: 300
 
-          email_notifications: {}
+        - task_key: gold_indicadores
 
-          notebook_task:
-            notebook_path: ../src/job_cambio/gold.ipynb
-            source: WORKSPACE
-
-          run_if: ALL_SUCCESS
-          webhook_notifications: {}
-
-        - task_key: gold_indicador
           depends_on:
-            - task_key: gold
+            - task_key: gold_cotacao_diaria
 
-          disabled: false
+          notebook_task:
+            notebook_path: ../src/job_cambio/06_gold_indicadores.ipynb
+            source: WORKSPACE
+
+          run_if: ALL_SUCCESS
 
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
           timeout_seconds: 300
 
-          email_notifications: {}
-
-          notebook_task:
-            notebook_path: ../src/job_cambio/gold_indicador.ipynb
-            source: WORKSPACE
-
-          run_if: ALL_SUCCESS
-          webhook_notifications: {}
-
-      # Notificações gerais do job
       email_notifications:
         on_failure:
           - lucas.paaz5@gmail.com
@@ -138,29 +115,24 @@ resources:
       notification_settings:
         no_alert_for_skipped_runs: true
         no_alert_for_canceled_runs: true
+        alert_on_last_attempt: true
 
-      # Considera o job lento após 5 minutos
       health:
         rules:
           - metric: RUN_DURATION_SECONDS
             op: GREATER_THAN
             value: 300
 
-      # Somente uma execução ativa por vez
       max_concurrent_runs: 1
 
-      performance_target: PERFORMANCE_OPTIMIZED
-
-      # Caso uma execução já esteja ativa, a próxima aguarda
       queue:
         enabled: true
 
+      performance_target: PERFORMANCE_OPTIMIZED
+
       schedule:
-        pause_status: UNPAUSED
-        quartz_cron_expression: 0 0 5,12,17 * * ?
+        quartz_cron_expression: "0 0 14,17 * * ?"
         timezone_id: America/Sao_Paulo
+        pause_status: UNPAUSED
 
-      # Timeout máximo do job inteiro: 30 minutos
       timeout_seconds: 1800
-
-      webhook_notifications: {}
